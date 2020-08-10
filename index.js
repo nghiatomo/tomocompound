@@ -12,7 +12,7 @@ const CompTrollerAbi = require('./abis/CompTroller.json')
 const CErc20ImmutableAbi = require('./abis/CErc20Immutable.json')
 
 
-const pkey = ''
+const pkey = 'b3df7f4716b9f1e19bcc0c8e69cfb6d4cff89d610c894be4604fcad46fb72069'
 const network = 'https://rpc.devnet.tomochain.com'
 
 function createContract (contractName) {

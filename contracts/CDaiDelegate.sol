@@ -127,7 +127,7 @@ contract CDaiDelegate is CErc20Delegate {
      */
     function doTransferIn(address from, uint amount) internal returns (uint) {
         // Perform the EIP-20 transfer in
-        EIP20Interface token = EIP20Interface(underlying);
+        ITRC21 token = ITRC21(underlying);
         require(token.transferFrom(from, address(this), amount), "unexpected EIP-20 transfer in return");
 
         DaiJoinLike daiJoin = DaiJoinLike(daiJoinAddress);
