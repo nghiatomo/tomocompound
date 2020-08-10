@@ -1,0 +1,25 @@
+{
+  "name": "tomocompound",
+  "version": "1.0.0",
+  "description": "Tomochain Compound",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nghiatomo/tomocompound.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nghiatomo/tomocompound/issues"
+  },
+  "homepage": "https://github.com/nghiatomo/tomocompound#readme",
+  "dependencies": {
+    "solc": "^0.4.25",
+    "truffle-privatekey-provider": "^1.3.0",
+    "web3": "^1.2.11",
+    "web3-provider-engine": "^15.0.12"
+  }
+}
