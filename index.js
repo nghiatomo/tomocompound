@@ -72,7 +72,7 @@ async function deployTRC21Contract (
                             return resolve(contractAddress)
                         }
                     }
-                })
+                }).catch(error => console.log(error))
         } catch (error) {
             return reject(error)
         }
@@ -113,7 +113,7 @@ async function deployInterestRateContract (
                             return resolve(contractAddress)
                         }
                     }
-                })
+                }).catch(error => console.log(error))
         } catch (error) {
             return reject(error)
         }
@@ -149,7 +149,7 @@ async function deployNoArgContract (
                             return resolve(contractAddress)
                         }
                     }
-                })
+                }).catch(error => console.log(error))
         } catch (error) {
             return reject(error)
         }
@@ -196,7 +196,7 @@ async function deployCERCContract (
                             return resolve(contractAddress)
                         }
                     }
-                })
+                }).catch(error => console.log(error))
         } catch (error) {
             return reject(error)
         }
