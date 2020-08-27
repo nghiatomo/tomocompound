@@ -10,10 +10,12 @@ const WhitePaperInterestRateModelAbi = require('./abis/WhitePaperInterestRateMod
 const SimplePriceOracleAbi = require('./abis/SimplePriceOracle.json')
 const CompTrollerAbi = require('./abis/CompTroller.json')
 const CErc20ImmutableAbi = require('./abis/CErc20Immutable.json')
-
+const CompAbi = require('./abis/Comp.json')
 
 const pkey = 'b3df7f4716b9f1e19bcc0c8e69cfb6d4cff89d610c894be4604fcad46fb72069'
 const network = 'https://rpc.devnet.tomochain.com'
+
+let sleep = (time) => new Promise((resolve) => setTimeout(resolve, time))
 
 function createContract (contractName) {
     try {
@@ -48,15 +50,64 @@ async function deployTRC21Contract (
 
             const TRC21Contract = new web3.eth.Contract(
                 trcContract.abi, null, { data: '0x' + trcContract.bytecode })
+
             await TRC21Contract.deploy({
                 arguments: [
+                    [account],
+                    1,
                     token.name,
                     token.symbol,
-                    token.decimals
+                    token.decimals,
+                    new BigNumber(100000000).multipliedBy(10 ** 18).toString(10),
+                    0,
+                    0,
+                    0
                 ]
             }).send({
                 from: account.toLowerCase(),
-                gas: web3.utils.toHex(4000000),
+                gas: web3.utils.toHex(5000000),
+                gasPrice: web3.utils.toHex(10000000000000),
+                nonce: await web3.eth.getTransactionCount(account)
+            })
+                .on('error', (error) => {
+                    return reject(error)
+                })
+                .on('transactionHash', async (txHash) => {
+                    let check = true
+                    while (check) {
+                        const receipt = await web3.eth.getTransactionReceipt(txHash)
+                        if (receipt) {
+                            check = false
+                            const contractAddress = receipt.contractAddress
+                            return resolve(contractAddress)
+                        }
+                    }
+                }).catch(error => console.log(error))
+        } catch (error) {
+            return reject(error)
+        }
+    })
+}
+
+async function deployCOMPContract (
+    trcContract,
+    web3,
+    address
+) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const account = (await web3.eth.getAccounts())[0]
+
+            const TRC21Contract = new web3.eth.Contract(
+                trcContract.abi, null, { data: '0x' + trcContract.bytecode })
+
+            await TRC21Contract.deploy({
+                arguments: [
+                    address
+                ]
+            }).send({
+                from: account.toLowerCase(),
+                gas: web3.utils.toHex(5000000),
                 gasPrice: web3.utils.toHex(10000000000000)
             })
                 .on('error', (error) => {
@@ -78,6 +129,7 @@ async function deployTRC21Contract (
         }
     })
 }
+
 
 async function deployInterestRateContract (
     trcContract,
@@ -134,7 +186,7 @@ async function deployNoArgContract (
             await TRC21Contract.deploy().send({
                 from: account.toLowerCase(),
                 gas: web3.utils.toHex(7000000),
-                gasPrice: web3.utils.toHex(10000000000000)
+                gasPrice: web3.utils.toHex(100000000000000)
             })
                 .on('error', (error) => {
                     return reject(error)
@@ -167,6 +219,7 @@ async function deployCERCContract (
 
             const TRC21Contract = new web3.eth.Contract(
                 trcContract.abi, null, { data: '0x' + trcContract.bytecode })
+
             await TRC21Contract.deploy({
                 arguments: [
                     token.underlying,
@@ -203,7 +256,7 @@ async function deployCERCContract (
     })
 }
 
-async function deploy (name, symbol, decimals) {
+async function deployEngine(){
     try {
         if (pkey === '') {
             throw new Error("pkey is required")
@@ -214,41 +267,33 @@ async function deploy (name, symbol, decimals) {
         )
         const web3 = new Web3(walletProvider)
         const account = (await web3.eth.getAccounts())[0]
-        // ----------------------------------------------------------------
-        console.log('Deploying contract TRC21')
+        console.log('Deploying CompTroller')
 
-        const trcContract = {
-            abi: TRC21Abi.abi, bytecode: TRC21Abi.bytecode
+        const comptrollerContract = {
+            abi: CompTrollerAbi.abi,
+            bytecode: CompTrollerAbi.bytecode
         }
-        const trc21 = {
-            name, symbol, decimals
-        }
-        const trc21ContractAddress = await deployTRC21Contract(
-            trcContract,
-            web3,
-            trc21
+        const comptrollerContractAddress = await deployNoArgContract(
+            comptrollerContract,
+            web3
         )
-        console.log('trc21ContractAddress', trc21ContractAddress)
-        // --------------------------------------------------------------------
+        console.log('comptrollerContractAddress', comptrollerContractAddress)
 
-        console.log('Deploying WhitePaperInterestRateModel')
+         // ----------------------------------------------------------------
+        console.log('Deploying COMP contract')
 
-        const interestRateContract = {
-            abi: WhitePaperInterestRateModelAbi.abi,
-            bytecode: WhitePaperInterestRateModelAbi.bytecode
+        const compContract = {
+            abi: CompAbi.abi,
+            bytecode: CompAbi.bytecode
         }
-        const data = {
-            baseRatePerYear: new BigNumber(0.05).multipliedBy(10 ** 18).toString(10),
-            multiplierPerYear: new BigNumber(0.15).multipliedBy(10 ** 18).toString(10)
-        }
-        const interestRateContractAddress = await deployInterestRateContract(
-            interestRateContract,
+        const compContractAddress = await deployCOMPContract(
+            compContract,
             web3,
-            data
+            comptrollerContractAddress
         )
-        console.log('interestRateContractAddress', interestRateContractAddress)
-        // --------------------------------------------------------------------------
-
+        console.log('compContractAddress', compContractAddress)
+        sleep(1000)
+        // -----------------------------------------------------------------------------
         console.log('Deploying SimplePriceOracle contract')
 
         const simpleOracleContract = {
@@ -260,85 +305,18 @@ async function deploy (name, symbol, decimals) {
             web3
         )
         console.log('simpleOracleContractAddress', simpleOracleContractAddress)
-        // ---------------------------------------------------------------------------
-
-        console.log('Deploying CompTroller')
-
-        const compContract = {
-            abi: CompTrollerAbi.abi,
-            bytecode: CompTrollerAbi.bytecode
-        }
-        const compContractAddress = await deployNoArgContract(
-            compContract,
-            web3
-        )
-        console.log('compContractAddress', compContractAddress)
-        // -----------------------------------------------------------------------------
+        sleep(1000)
         
-        console.log('Deploying CErc20Immutable')
-
-        const cercContract = {
-            abi: CErc20ImmutableAbi.abi,
-            bytecode: CErc20ImmutableAbi.bytecode
-        }
-        const data1 = {
-            underlying: trc21ContractAddress,
-            comptroller: compContractAddress,
-            interestRateModel: interestRateContractAddress,
-            initialExRate: new BigNumber(2).multipliedBy(10 ** 17).toString(10),
-            name: 'c' + name,
-            symbol: 'c' + symbol,
-            decimals: decimals,
-            admin: account
-        }
-        const cercContractAddress = await deployCERCContract(
-            cercContract,
-            web3,
-            data1
+        const compContract2 = new web3.eth.Contract(
+            CompTrollerAbi.abi,
+            comptrollerContractAddress
         )
-        console.log('cercContractAddress', cercContractAddress)
-        // ------------------------------------------------------------------
-        // setUnderlyingPrice
         const txParams = {
             from: account.toLowerCase(),
             gas: web3.utils.toHex(4000000),
             gasPrice: web3.utils.toHex(250000000)
         }
-        console.log('set underlying price')
-        const simpleContract = new web3.eth.Contract(
-            SimplePriceOracleAbi.abi,
-            simpleOracleContractAddress
-        )
-        await simpleContract.methods.setUnderlyingPrice(
-            cercContractAddress,
-            new BigNumber(30).multipliedBy(10 ** 18).toString(10)
-        ).send(txParams).on('transactionHash', async (txHash) => {
-            let check = true
-            while (check) {
-                const receipt = await web3.eth.getTransactionReceipt(txHash)
-                if (receipt) {
-                    check = false
-                    console.log('set underlying price', txHash)
-                }
-            }
-        })
-        // support market
-        const compContract2 = new web3.eth.Contract(
-            CompTrollerAbi.abi,
-            compContractAddress
-        )
-        console.log('Support market')
-        await compContract2.methods._supportMarket(cercContractAddress).send(txParams)
-        .on('transactionHash', async (txHash) => {
-            let check = true
-            while (check) {
-                const receipt = await web3.eth.getTransactionReceipt(txHash)
-                if (receipt) {
-                    check = false
-                    console.log('Support market', txHash)
-                }
-            }
-        })
+
         console.log('set max asset')
         await compContract2.methods._setMaxAssets(10).send(txParams)
         .on('transactionHash', async (txHash) => {
@@ -351,7 +329,8 @@ async function deploy (name, symbol, decimals) {
                 }
             }
         })
-        console.log('set price oracle')
+
+        console.log('set price oracle contract')
         await compContract2.methods._setPriceOracle(simpleOracleContractAddress).send(txParams)
         .on('transactionHash', async (txHash) => {
             let check = true
@@ -359,29 +338,170 @@ async function deploy (name, symbol, decimals) {
                 const receipt = await web3.eth.getTransactionReceipt(txHash)
                 if (receipt) {
                     check = false
-                    console.log('set price oracle', txHash)
+                    console.log('set price oracle contract', txHash)
                 }
             }
         })
-        console.log('set collateral factor')
-        await compContract2.methods._setCollateralFactor(
-            cercContractAddress,
-            new BigNumber(8).multipliedBy(10 ** 18).toString(10)
+
+        console.log('set comp token contract')
+        await compContract2.methods.setCompAddress(
+            compContractAddress
         ).send(txParams).on('transactionHash', async (txHash) => {
             let check = true
             while (check) {
                 const receipt = await web3.eth.getTransactionReceipt(txHash)
                 if (receipt) {
                     check = false
-                    console.log('set collateral factor', txHash)
+                    console.log('set comp token contract', txHash)
                 }
             }
         })
         return {
+            compContractAddress,
+            comptrollerContractAddress,
+            simpleOracleContractAddress
+        }
+        
+    }catch (error) {
+        throw error
+    }
+}
+// baseInterestRate=0.05(e18), slopeInterestRate=0.15(e18), initialExchangeRate=0.2, collateralFactor=0.7, initUnderlingPrice=30
+async function deployNewToken (comptrollerContractAddress, simpleOracleContractAddress,  name, symbol, decimals, baseInterestRate, slopeInterestRate, initialExchangeRate, collateralFactor, initUnderlingPrice) {
+    try {
+        if (pkey === '') {
+            throw new Error("pkey is required")
+        }
+        const walletProvider = new PrivateKeyProvider(
+            pkey,
+            network
+        )
+        const web3 = new Web3(walletProvider)
+        const account = (await web3.eth.getAccounts())[0]
+
+        // ----------------------------------------------------------------
+        console.log('Deploying contract TRC21', symbol)
+
+        const trcContract = {
+            abi: TRC21Abi.abi, bytecode: TRC21Abi.bytecode
+        }
+        const trc21 = {
+            name, symbol, decimals
+        }
+        const trc21ContractAddress = await deployTRC21Contract(
+            trcContract,
+            web3,
+            trc21
+        )
+        console.log('trc21ContractAddress', symbol, trc21ContractAddress)
+        sleep(1000)
+        // --------------------------------------------------------------------
+
+        console.log('Deploying WhitePaperInterestRateModel', symbol)
+
+        const interestRateContract = {
+            abi: WhitePaperInterestRateModelAbi.abi,
+            bytecode: WhitePaperInterestRateModelAbi.bytecode
+        }
+        const data = {
+            baseRatePerYear: new BigNumber(baseInterestRate).multipliedBy(10 ** 18).toString(10),
+            multiplierPerYear: new BigNumber(slopeInterestRate).multipliedBy(10 ** 18).toString(10)
+        }
+        const interestRateContractAddress = await deployInterestRateContract(
+            interestRateContract,
+            web3,
+            data
+        )
+        console.log('interestRateContractAddress', symbol, interestRateContractAddress)
+        sleep(1000)
+    
+        // ---------------------------------------------------------------------------
+        
+        console.log('Deploying CErc20Immutable', symbol)
+
+        const cercContract = {
+            abi: CErc20ImmutableAbi.abi,
+            bytecode: CErc20ImmutableAbi.bytecode
+        }
+        const data1 = {
+            underlying: trc21ContractAddress,
+            comptroller: comptrollerContractAddress,
+            interestRateModel: interestRateContractAddress,
+            initialExRate: new BigNumber(initialExchangeRate).multipliedBy(10 ** 18).toString(10),
+            name: 'c' + name,
+            symbol: 'c' + symbol,
+            decimals: decimals,
+            admin: account
+        }
+        const cercContractAddress = await deployCERCContract(
+            cercContract,
+            web3,
+            data1
+        )
+        console.log('cercContractAddress', symbol, cercContractAddress)
+
+        //------------------------------------------------------------------
+
+        const txParams = {
+            from: account.toLowerCase(),
+            gas: web3.utils.toHex(4000000),
+            gasPrice: web3.utils.toHex(250000000)
+        }
+        console.log('set underlying price', symbol)
+        const simpleContract = new web3.eth.Contract(
+            SimplePriceOracleAbi.abi,
+            simpleOracleContractAddress
+        )
+        await simpleContract.methods.setUnderlyingPrice(
+            cercContractAddress,
+            new BigNumber(initUnderlingPrice).multipliedBy(10 ** 18).toString(10)
+        ).send(txParams).on('transactionHash', async (txHash) => {
+            let check = true
+            while (check) {
+                const receipt = await web3.eth.getTransactionReceipt(txHash)
+                if (receipt) {
+                    check = false
+                    console.log('set underlying price', symbol, txHash)
+                }
+            }
+        })
+    
+        const compContract2 = new web3.eth.Contract(
+            CompTrollerAbi.abi,
+            comptrollerContractAddress
+        )
+        console.log('Support market', symbol)
+        await compContract2.methods._supportMarket(cercContractAddress).send(txParams)
+        .on('transactionHash', async (txHash) => {
+            let check = true
+            while (check) {
+                const receipt = await web3.eth.getTransactionReceipt(txHash)
+                if (receipt) {
+                    check = false
+                    console.log('Support market', symbol, txHash)
+                }
+            }
+        })
+
+        console.log('set collateral factor', symbol)
+        await compContract2.methods._setCollateralFactor(
+            cercContractAddress,
+            new BigNumber(collateralFactor).multipliedBy(10 ** 18).toString(10)
+        ).send(txParams).on('transactionHash', async (txHash) => {
+            let check = true
+            while (check) {
+                const receipt = await web3.eth.getTransactionReceipt(txHash)
+                if (receipt) {
+                    check = false
+                    console.log('set collateral factor',symbol,  txHash)
+                }
+            }
+        })
+
+
+        return {
             trc21ContractAddress,
             interestRateContractAddress,
-            simpleOracleContractAddress,
-            compContractAddress,
             cercContractAddress
         }
     } catch (error) {
@@ -389,8 +509,17 @@ async function deploy (name, symbol, decimals) {
     }
 }
 
-deploy(
-    'Wrap BTC',
-    'WBTC',
-    18
-)
+
+async function deploy () {
+    const d = await deployEngine()
+    r1 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapBTC", "WTBTC", 18, 0.05, 0.15, 0.2, 0.8, 300)
+    console.log(r1)
+    r2 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapETH", "WTETH", 18, 0.05, 0.15, 0.2, 0.7, 1)
+    console.log(r2)
+    r3 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapSOL", "WTSOL", 18, 0.05, 0.15, 0.2, 0.6, 0.3)
+    console.log(r3)
+    r4 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapSRM", "WTSRM", 18, 0.05, 0.15, 0.2, 0.5, 0.2)
+    console.log(r4)
+}
+
+deploy()

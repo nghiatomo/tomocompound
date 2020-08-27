@@ -83,6 +83,9 @@ contract Comptroller is ComptrollerV3Storage, ComptrollerInterface, ComptrollerE
     // liquidationIncentiveMantissa must be no greater than this value
     uint internal constant liquidationIncentiveMaxMantissa = 1.5e18; // 1.5
 
+    // COMP contract address
+    address public comContractAddress;
+
     constructor() public {
         admin = msg.sender;
     }
@@ -1376,6 +1379,10 @@ contract Comptroller is ComptrollerV3Storage, ComptrollerInterface, ComptrollerE
      * @return The address of COMP
      */
     function getCompAddress() public view returns (address) {
-        return 0xc00e94Cb662C3520282E6f5717214004A7f26888;
+        return comContractAddress;
+    }
+     function setCompAddress(address compContract) public {
+        require(msg.sender == admin, "only admin can set");
+        comContractAddress = compContract;
     }
 }
