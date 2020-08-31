@@ -22,6 +22,7 @@ const cBtcContractAddress = "0x874f50f239124E4eE76B994Ae87A5d9481524199"
 const wSOLContractAddress = "0x27f54377f2a27BeA283C546C83A29bD2a229B781"
 const cSOLContractAddress = "0x2525F0A9448e4e26EAa5F7f35f245c1777a9C372"
 
+const comptrollerContract = "0xb68797543F93b8E26fFe4329eBF6977F2D3E022a"
 
 const walletProvider = new PrivateKeyProvider(
     pkey,
@@ -135,7 +136,40 @@ async function borrow(underlyingTokenAddress, cTokenAddress, amount){
 
 }
 
+async function getBorrowBalance(cTokenAddress, account){
+    try {
+        const cTokenContract = new web3.eth.Contract(
+            CErc20ImmutableAbi.abi,
+            cTokenAddress
+        )
+        console.log('borrow balance')
+        let balance = await cTokenContract.methods.borrowBalanceStored(account).call()
+        console.log("borrow balance", account, new BigNumber(balance).div(10 ** 18).toString(10))
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+async function getHypotheticalAccountLiquidity(account, cTokenModify, redeemTokens, borrowAmount){
+    try {
+        const comptroller = new web3.eth.Contract(
+            CompTrollerAbi.abi,
+            comptrollerContract
+        )
+        console.log('getAccountLiquidity')
+        let balance = await comptroller.methods.getHypotheticalAccountLiquidity(account, cTokenModify, redeemTokens, borrowAmount).call()
+        console.log("getAccountLiquidity", account, balance)
+
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 //mint(wbtcContractAddress, cBtcContractAddress, 10)
 //mint(wSOLContractAddress, cSOLContractAddress, 10)
+//borrow(wSOLContractAddress, cSOLContractAddress, 5)
 
-borrow(wSOLContractAddress, cSOLContractAddress, 5)
+//getBorrowBalance(cSOLContractAddress, "0x2fAdA4DeB166348B99C19d108A2d287eEe03b6b8")
+
+getHypotheticalAccountLiquidity("0x2fAdA4DeB166348B99C19d108A2d287eEe03b6b8", cSOLContractAddress, 0, new BigNumber(2).multipliedBy(10 ** 18).toString(10))

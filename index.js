@@ -518,7 +518,7 @@ async function deploy () {
     console.log(r2)
     r3 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapSOL", "WTSOL", 18, 0.05, 0.15, 0.2, 0.6, 0.3)
     console.log(r3)
-    r4 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapSRM", "WTSRM", 18, 0.05, 0.15, 0.2, 0.5, 0.2)
+    r4 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapUSDT", "WTUSDT", 18, 0.05, 0.15, 0.2, 0.9, 0.03)
     console.log(r4)
 }
 
