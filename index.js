@@ -330,6 +330,22 @@ async function deployEngine(){
             }
         })
 
+        console.log('set comp rate')
+        await compContract2.methods._setCompRate(
+            new BigNumber(0.22).multipliedBy(10 ** 18).toString(10)
+        ).send(txParams)
+        .on('transactionHash', async (txHash) => {
+            let check = true
+            while (check) {
+                const receipt = await web3.eth.getTransactionReceipt(txHash)
+                if (receipt) {
+                    check = false
+                    console.log('set comp rate', txHash)
+                }
+            }
+        })
+
+
         console.log('set price oracle contract')
         await compContract2.methods._setPriceOracle(simpleOracleContractAddress).send(txParams)
         .on('transactionHash', async (txHash) => {
@@ -483,6 +499,19 @@ async function deployNewToken (comptrollerContractAddress, simpleOracleContractA
             }
         })
 
+        console.log('Add comp market', symbol)
+        await compContract2.methods._addCompMarkets([cercContractAddress]).send(txParams)
+        .on('transactionHash', async (txHash) => {
+            let check = true
+            while (check) {
+                const receipt = await web3.eth.getTransactionReceipt(txHash)
+                if (receipt) {
+                    check = false
+                    console.log('Add comp market hash', symbol, txHash)
+                }
+            }
+        })
+
         console.log('set collateral factor', symbol)
         await compContract2.methods._setCollateralFactor(
             cercContractAddress,
@@ -512,13 +541,13 @@ async function deployNewToken (comptrollerContractAddress, simpleOracleContractA
 
 async function deploy () {
     const d = await deployEngine()
-    r1 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapBTC", "WTBTC", 18, 0.05, 0.15, 0.2, 0.8, 300)
+    r1 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomochain Wrap BTC", "WTBTC", 18, 0.05, 0.15, 0.2, 0.8, 300)
     console.log(r1)
-    r2 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapETH", "WTETH", 18, 0.05, 0.15, 0.2, 0.7, 1)
+    r2 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomochain Wrap ETH", "WTETH", 18, 0.05, 0.15, 0.2, 0.7, 1)
     console.log(r2)
-    r3 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapSOL", "WTSOL", 18, 0.05, 0.15, 0.2, 0.6, 0.3)
+    r3 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomochain Wrap SOL", "WTSOL", 18, 0.05, 0.15, 0.2, 0.6, 0.3)
     console.log(r3)
-    r4 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomo WrapUSDT", "WTUSDT", 18, 0.05, 0.15, 0.2, 0.9, 0.03)
+    r4 = await deployNewToken(d.comptrollerContractAddress, d.simpleOracleContractAddress, "Tomochain Wrap USDT", "WTUSDT", 18, 0.05, 0.15, 0.2, 0.9, 0.03)
     console.log(r4)
 }
 
